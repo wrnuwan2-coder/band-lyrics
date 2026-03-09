@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Band Lyrics Viewer 🎸</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #controls {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 2px solid #ff6b6b;
+        }
+
+        #controls h1 {
+            font-size: 1.5em;
+            color: #ff6b6b;
+        }
+
+        #slideCounter {
+            font-size: 1.2em;
+            color: #4ecdc4;
+        }
+
+        #slideContainer {
+            position: absolute;
+            top: 70px;
+            left: 0;
+            right: 0;
+            bottom: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #slideContent {
+            background: #2d2d2d;
+            border-radius: 10px;
+            padding: 60px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+            border: 3px solid #ff6b6b;
+        }
+
+        .lyrics {
+            font-size: 2em;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            color: #ffffff;
+        }
+
+        .chord {
+            color: #4ecdc4;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        #navigation {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            border-top: 2px solid #ff6b6b;
+        }
+
+        button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        #fullscreenBtn {
+            background: #4ecdc4;
+        }
+
+        #fullscreenBtn:hover {
+            background: #3dbdb3;
+        }
+
+        @media (max-width: 768px) {
+            #slideContent {
+                padding: 30px;
+            }
+            
+            .lyrics {
+                font-size: 1.5em;
+            }
+
+            #controls h1 {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h1>🎸 Band Lyrics Viewer</h1>
+        <div id="slideCounter">Slide <span id="current">1</span> of <span id="total">1</span></div>
+    </div>
+
+    <div id="slideContainer">
+        <div id="slideContent">
+            <div class="lyrics">
+                <div class="chord">Intro: C - G - Am - F</div>
+                <br>
+                <div>මගේ හද තුළ ඔබ නිසා</div>
+                <div class="chord">C</div>
+                <div>සතුටින් පිරී යයි සිතිජ</div>
+                <div class="chord">G</div>
+                <div>ආදරේ මේ නොමැකී</div>
+                <div class="chord">Am</div>
+                <div>සදහටම පවතිනු මැනව</div>
+                <div class="chord">F</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="navigation">
+        <button id="prevBtn" onclick="previousSlide()">◀ Previous</button>
+        <button id="fullscreenBtn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+        <button id="nextBtn" onclick="nextSlide()">Next ▶</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        let totalSlides = 5;
+        let ws = null;
+        let isUpdatingFromServer = false;
+
+        // WebSocket connection
+        function connectWebSocket() {
+            // Get server IP from current URL
+            const hostname = window.location.hostname;
+            const wsUrl = `ws://${hostname}:8765`;
+            
+            console.log('Connecting to WebSocket:', wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('✅ Connected to sync server');
+                document.getElementById('controls').style.borderBottom = '2px solid #4ecdc4';
+                showNotification('🎸 Connected to band sync!');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'init') {
+                    // Initial connection - get current slide
+                    console.log('Initial slide:', data.slide);
+                    isUpdatingFromServer = true;
+                    currentSlide = data.slide;
+                    updateSlide();
+                    isUpdatingFromServer = false;
+                } else if (data.type === 'slide_update') {
+                    // Someone else changed the slide
+                    console.log('Slide updated from another device:', data.slide);
+                    isUpdatingFromServer = true;
+                    currentSlide = data.slide;
+                    updateSlide();
+                    isUpdatingFromServer = false;
+                    showNotification('📱 Slide synced!');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById('controls').style.borderBottom = '2px solid #ff6b6b';
+            };
+            
+            ws.onclose = () => {
+                console.log('❌ Disconnected from sync server');
+                document.getElementById('controls').style.borderBottom = '2px solid #ff6b6b';
+                showNotification('⚠️ Sync disconnected - reconnecting...');
+                
+                // Try to reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.9);
+                color: #4ecdc4;
+                padding: 15px 25px;
+                border-radius: 5px;
+                font-size: 1.1em;
+                z-index: 2000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+
+        // Demo slides - Replace with your actual PowerPoint content
+        const slides = [
+            {
+                title: "Song 1 - Intro",
+                content: `<div class="chord">Intro: C - G - Am - F</div>
+<br>
+<div>මගේ හද තුළ ඔබ නිසා</div>
+<div class="chord">C</div>
+<div>සතුටින් පිරී යයි සිතිජ</div>
+<div class="chord">G</div>
+<div>ආදරේ මේ නොමැකී</div>
+<div class="chord">Am</div>
+<div>සදහටම පවතිනු මැනව</div>
+<div class="chord">F</div>`
+            },
+            {
+                title: "Song 1 - Verse 1",
+                content: `<div>දිනක මා හමු වූ සැනින්</div>
+<div class="chord">C</div>
+<div>ජීවිතේ වෙනස් වී යයි</div>
+<div class="chord">G</div>
+<div>ඔබේ ඇස් දෙස බලන්නට</div>
+<div class="chord">Am</div>
+<div>සිත සතුටින් මවියයි</div>
+<div class="chord">F</div>`
+            },
+            {
+                title: "Song 1 - Chorus",
+                content: `<div class="chord">Chorus: C - G - Am - F</div>
+<br>
+<div>ඔබ නැතිව මට හිතන්නත් බැහැ</div>
+<div class="chord">C - G</div>
+<div>ජීවිතේ අර්ථය ඔබයි</div>
+<div class="chord">Am - F</div>
+<div>සෙනෙහස මගේ සදහටම ඔබටයි</div>
+<div class="chord">C - G - Am - F</div>`
+            },
+            {
+                title: "Song 1 - Bridge",
+                content: `<div class="chord">Bridge: Dm - Em - F - G</div>
+<br>
+<div>කවදත් ඔබ මගේ</div>
+<div class="chord">Dm</div>
+<div>සිතේ රැදී සිටිනවා</div>
+<div class="chord">Em</div>
+<div>මේ ආදරේ අවසන් නැහැ</div>
+<div class="chord">F - G</div>`
+            },
+            {
+                title: "Song 1 - Outro",
+                content: `<div>සදහටම ඔබ මගේ</div>
+<div class="chord">C</div>
+<div>හිත තුළ රැදී සිටිනු මැනව</div>
+<div class="chord">G - Am - F</div>
+<br>
+<div class="chord">End: C</div>`
+            }
+        ];
+
+        function updateSlide() {
+            document.getElementById('current').textContent = currentSlide;
+            document.getElementById('total').textContent = totalSlides;
+            
+            const slide = slides[currentSlide - 1];
+            document.getElementById('slideContent').innerHTML = 
+                `<div class="lyrics">${slide.content}</div>`;
+
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+
+            // Broadcast to other devices (only if this is a user action, not from server)
+            if (!isUpdatingFromServer) {
+                broadcastSlideChange(currentSlide);
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function previousSlide() {
+            if (currentSlide > 1) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                previousSlide();
+            } else if (e.key === 'f' || e.key === 'F') {
+                toggleFullscreen();
+            }
+        });
+
+        // Broadcast function - sends slide changes to all other devices
+        function broadcastSlideChange(slideNum) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'slide_change',
+                    slide: slideNum,
+                    timestamp: new Date().toISOString()
+                }));
+                console.log('Broadcasting slide change to:', slideNum);
+            }
+        }
+
+        // Initialize
+        totalSlides = slides.length;
+        updateSlide();
+        
+        // Connect to WebSocket server
+        connectWebSocket();
+        
+        // Add CSS animation for notifications
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(400px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
