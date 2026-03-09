@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>equalizer music band — Lyrics</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;600&family=Space+Mono:wght@400;700&family=Noto+Sans+Sinhala:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#000;--text:#fff;--dim:rgba(255,255,255,.35);--accent:#ff3c5a;--accent2:#7c3aed}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;user-select:none}
+
+  #waiting{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px;transition:opacity .4s;z-index:10}
+  #waiting.hidden{opacity:0;pointer-events:none}
+  .wait-logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,8vw,4rem);letter-spacing:6px;color:rgba(255,255,255,.15)}
+  .wait-logo span{color:rgba(255,60,90,.4)}
+  .wait-text{font-size:.85rem;color:rgba(255,255,255,.2);animation:pulsing 2s infinite}
+  .conn-badge{font-size:.7rem;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);margin-top:8px}
+  .conn-badge.ok{color:#00e676;background:rgba(0,230,118,.1)}
+  @keyframes pulsing{0%,100%{opacity:.2}50%{opacity:.6}}
+
+  #main{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:70px 28px 60px}
+
+  .song-info{position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;opacity:0;transition:opacity .4s}
+  .song-info.show{opacity:1}
+  .song-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(1rem,4vw,1.3rem);letter-spacing:2px;color:var(--accent)}
+  .song-artist{font-size:.7rem;color:var(--dim);margin-top:1px}
+  .verse-counter{font-size:.7rem;color:var(--dim);white-space:nowrap}
+
+  .lyrics-wrap{
+    text-align:left;width:100%;max-width:900px;
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+    transition:opacity .25s,transform .3s;
+    overflow:hidden;padding:0 4px;
+  }
+  .lyrics-wrap.out{opacity:0;transform:translateY(-10px)}
+  .lyrics-wrap.in{opacity:1;transform:translateY(0)}
+
+  .lyric-line{
+    font-weight:500;line-height:1.45;color:var(--text);
+    text-shadow:0 2px 20px rgba(0,0,0,.6);width:100%;
+    white-space:pre;word-break:keep-all;overflow-x:auto;
+    font-family:'Space Mono','Courier New',monospace;
+  }
+  .lyric-line.chord{
+    color:var(--accent);font-weight:700;
+    font-family:'Space Mono','Courier New',monospace;
+    opacity:.95;margin-bottom:0;
+  }
+  .lyric-line.lbl{
+    color:var(--accent2);letter-spacing:3px;margin-bottom:8px;margin-top:10px;
+    font-family:'Bebas Neue',sans-serif;white-space:pre;
+  }
+  /* chord+lyric pairs sit flush together */
+  .lyric-line.chord + .lyric-line:not(.chord):not(.lbl){
+    margin-top:-2px;margin-bottom:10px;
+  }
+
+  .progress-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--accent);transition:width .4s ease;width:0}
+  .live-dot{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .3s;animation:livepulse 1.5s infinite}
+  .live-dot.show{opacity:1}
+  @keyframes livepulse{0%,100%{box-shadow:0 0 0 0 rgba(255,60,90,.6)}50%{box-shadow:0 0 0 6px rgba(255,60,90,0)}}
+
+  .bottom-controls{position:absolute;bottom:8px;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+  .font-controls{display:flex;gap:8px}
+  .font-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:var(--text);width:36px;height:36px;border-radius:50%;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .font-btn:active{background:rgba(255,255,255,.25)}
+  /* BG IMAGE */
+  #bg-image{position:fixed;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;z-index:0;transition:opacity .5s}
+  #bg-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:1;transition:opacity .5s}
+  #waiting,#main{z-index:2;position:relative}
+  #waiting{z-index:10}
+
+  .bg-toggle{display:flex;gap:8px;align-items:center}
+  .bg-opt{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .15s}
+  .bg-opt.active{border-color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div id="bg-image"></div>
+<div id="bg-overlay"></div>
+
+<div id="waiting">
+  <div class="wait-logo" style="line-height:1.1">
+    <div style="
+              font-family:'Bebas Neue',sans-serif;
+              font-size:clamp(1.8rem,7vw,3.5rem);
+              letter-spacing:6px;
+              background:linear-gradient(90deg,#ff3c5a,#c850c0,#4158d0);
+              -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+              margin-bottom:4px;line-height:1.1;
+            ">Equalizer Music Band</div>
+    <div style="font-family:'Space Mono',monospace;font-size:clamp(.7rem,2vw,1rem);letter-spacing:5px;color:rgba(255,255,255,.2);margin-top:2px">lyrics runner</div>
+  </div>
+  <div class="wait-text">Waiting for host to go live…</div>
+  <div class="conn-badge" id="conn-badge">Connecting…</div>
+</div>
+
+<div id="main">
+  <div class="live-dot" id="live-dot"></div>
+  <div class="song-info" id="song-info">
+    <div>
+      <div class="song-title" id="info-title"></div>
+      <div class="song-artist" id="info-artist"></div>
+    </div>
+    <div class="verse-counter" id="verse-counter"></div>
+  </div>
+  <div class="lyrics-wrap in" id="lyrics-wrap"></div>
+  <div class="progress-bar" id="progress-bar"></div>
+  <div class="bottom-controls">
+    <div class="bg-toggle">
+      <div class="bg-opt active" style="background:#000" data-bg="#000"></div>
+      <div class="bg-opt" style="background:#0a0020" data-bg="#0a0020"></div>
+      <div class="bg-opt" style="background:#001a00" data-bg="#001a00"></div>
+      <div class="bg-opt" style="background:#200000" data-bg="#200000"></div>
+    </div>
+    <div class="font-controls">
+      <button class="font-btn" id="size-down">A−</button>
+      <button class="font-btn" id="size-up">A+</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyATlzx0mYrd61nTzfDMgLqaFoVgvwYlK-g",
+  authDomain: "band-lyrics.firebaseapp.com",
+  databaseURL: "https://band-lyrics-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "band-lyrics",
+  storageBucket: "band-lyrics.firebasestorage.app",
+  messagingSenderId: "999724754981",
+  appId: "1:999724754981:web:df22db8aaa1bb0c992b7cc"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+const $   = id => document.getElementById(id);
+
+let sizeBoost = 1.0;
+let lastTs    = null;
+let lastData  = null;
+
+// Connection
+onValue(ref(db, '.info/connected'), snap => {
+  const ok = snap.val();
+  const b  = $('conn-badge');
+  b.textContent  = ok ? '🟢 Connected' : '🔴 Reconnecting…';
+  b.className    = 'conn-badge' + (ok ? ' ok' : '');
+});
+
+// BG image listener
+const bgRef = ref(db, 'bgImage');
+onValue(bgRef, snap => {
+  const url = snap.val();
+  const bgEl = document.getElementById('bg-image');
+  if (url) {
+    bgEl.style.backgroundImage = `url(${url})`;
+    bgEl.style.opacity = '1';
+  } else {
+    bgEl.style.backgroundImage = '';
+    bgEl.style.opacity = '0';
+  }
+});
+
+// Live listener
+onValue(ref(db, 'live'), snap => {
+  const data = snap.val();
+  if (!data || data.ts === lastTs) return;
+  lastTs = data.ts;
+  if (data.type === 'clear') {
+    showWaiting();
+  } else if (data.type === 'verse') {
+    lastData = data;
+    showMain();
+    renderLyrics(data);
+  }
+});
+
+function renderLyrics(data) {
+  const wrap = $('lyrics-wrap');
+  wrap.classList.add('out');
+  wrap.classList.remove('in');
+
+  setTimeout(() => {
+    const lines = data.text.split('\n').filter(l => l.trim());
+
+    wrap.innerHTML = lines.map((line, i) => {
+      const t = line.trim();
+      const isLbl   = /^(verse|chorus|bridge|outro|intro|pre|hook)/i.test(t) && t.length < 35;
+      const isChord = !isLbl && /^[A-G][#b]?[m]?[\s]/.test(t) && t.length < 40 && !/[a-z]{5,}/.test(t);
+      const cls = isLbl ? 'lbl' : isChord ? 'chord' : '';
+      return `<div class="lyric-line ${cls}">${line}</div>`;
+    }).join('');
+
+    autoFit(wrap);
+
+    $('info-title').textContent    = data.title  || '';
+    $('info-artist').textContent   = data.artist || '';
+    $('song-info').classList.add('show');
+    $('verse-counter').textContent = `${data.verseIdx + 1} / ${data.total}`;
+    $('live-dot').classList.add('show');
+
+    const pct = data.total > 1 ? (data.verseIdx / (data.total - 1)) * 100 : 100;
+    $('progress-bar').style.width = pct + '%';
+
+    wrap.classList.remove('out');
+    wrap.classList.add('in');
+  }, 220);
+}
+
+function autoFit(wrap) {
+  const availH = window.innerHeight - 140; // top 70 + bottom 60 + buffer
+  const availW = window.innerWidth  - 56;
+
+  const normalLines = wrap.querySelectorAll('.lyric-line:not(.lbl)');
+  const lineCount   = normalLines.length || 1;
+
+  // Calculate starting size that should fit
+  let size = Math.min(
+    availH / (lineCount * 1.45),
+    availW / 5,
+    80
+  );
+  size = Math.max(size, 13);
+
+  applySize(wrap, size * sizeBoost);
+
+  // Shrink if still overflows
+  let tries = 0;
+  while (wrap.scrollHeight > availH + 4 && size > 12 && tries < 40) {
+    size -= 1.5;
+    applySize(wrap, size * sizeBoost);
+    tries++;
+  }
+}
+
+function applySize(wrap, size) {
+  wrap.querySelectorAll('.lyric-line:not(.lbl):not(.chord)').forEach(el => {
+    el.style.fontSize   = size + 'px';
+    el.style.lineHeight = '1.35';
+  });
+  wrap.querySelectorAll('.lyric-line.chord').forEach(el => {
+    el.style.fontSize   = Math.max(11, size * 0.65) + 'px';
+    el.style.lineHeight = '1.2';
+  });
+  wrap.querySelectorAll('.lyric-line.lbl').forEach(el => {
+    el.style.fontSize   = Math.max(12, size * 0.4) + 'px';
+    el.style.lineHeight = '1.2';
+  });
+}
+
+// A+ / A-
+$('size-up').onclick   = () => { sizeBoost = Math.min(2.0, sizeBoost + 0.15); if (lastData) renderLyrics(lastData); };
+$('size-down').onclick = () => { sizeBoost = Math.max(0.3, sizeBoost - 0.15); if (lastData) renderLyrics(lastData); };
+
+// Refit on rotate / resize
+window.addEventListener('resize', () => { if (lastData) renderLyrics(lastData); });
+
+// Background
+document.querySelectorAll('.bg-opt').forEach(el => {
+  el.onclick = () => {
+    const c = el.dataset.bg;
+    document.body.style.background  = c;
+    $('waiting').style.background   = c;
+    $('main').style.background      = c;
+    document.querySelectorAll('.bg-opt').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+  };
+});
+
+function showMain() {
+  $('waiting').classList.add('hidden');
+  $('main').style.display = 'flex';
+}
+function showWaiting() {
+  $('waiting').classList.remove('hidden');
+  $('main').style.display = 'none';
+  $('live-dot').classList.remove('show');
+  lastData = null;
+}
+</script>
+</body>
+</html>
