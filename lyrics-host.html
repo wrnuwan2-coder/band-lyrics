@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>equalizer music band — Lyrics Runner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=Inter:wght@300;400;600&family=Noto+Sans+Sinhala:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f;--surface:#13131c;--border:#2a2a3d;
+    --accent:#ff3c5a;--accent2:#7c3aed;--text:#e8e8f0;--muted:#5a5a7a;--green:#00e676;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;display:grid;grid-template-rows:auto 1fr}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface)}
+  .logo{display:flex;flex-direction:column;gap:0;line-height:1}
+  .logo-band{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:2rem;letter-spacing:5px;
+    background:linear-gradient(90deg,#ff3c5a,#c850c0,#4158d0);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    text-transform:uppercase;
+  }
+  .logo-sub{
+    font-family:'Space Mono',monospace;
+    font-size:.55rem;letter-spacing:4px;color:var(--muted);
+    text-transform:uppercase;margin-top:1px;
+  }
+  .badge{background:var(--accent);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+  .conn-status{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;transition:background .3s}
+  .dot.green{background:var(--green);animation:pulse 1.5s infinite}
+  .dot.red{background:#ff3c5a}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .main{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 62px)}
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+  .share-panel{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+  #qr-img{width:72px;height:72px;border-radius:8px;border:2px solid var(--border)}
+  .share-info{flex:1;min-width:0}
+  .share-title{font-size:.75rem;font-weight:700;margin-bottom:4px}
+  .share-url{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--accent2);background:var(--bg);padding:5px 10px;border-radius:6px;cursor:pointer;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--border);text-decoration:none;transition:border-color .15s}
+  .share-url:hover{border-color:var(--accent2)}
+  .share-hint{font-size:.65rem;color:var(--muted);margin-top:4px}
+  .sidebar-section{padding:18px 20px;border-bottom:1px solid var(--border)}
+  .sidebar-section h3{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-family:'Space Mono',monospace}
+  .song-list{flex:1;overflow-y:auto;padding:8px}
+  .song-list::-webkit-scrollbar{width:4px}
+  .song-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .song-item{padding:12px 14px;border-radius:8px;cursor:pointer;transition:all .15s;margin-bottom:4px;border:1px solid transparent;display:flex;align-items:center;gap:10px}
+  .song-item:hover{background:rgba(255,60,90,.08);border-color:rgba(255,60,90,.2)}
+  .song-item.active{background:rgba(255,60,90,.15);border-color:var(--accent)}
+  .song-item .num{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);min-width:20px}
+  .song-item .stitle{font-size:.9rem;font-weight:600}
+  .song-item .artist{font-size:.75rem;color:var(--muted)}
+  .add-btn{display:flex;align-items:center;gap:8px;width:100%;background:rgba(255,60,90,.1);border:1px dashed rgba(255,60,90,.4);color:var(--accent);padding:10px 14px;border-radius:8px;font-size:.85rem;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;font-weight:600}
+  .add-btn:hover{background:rgba(255,60,90,.2);border-style:solid}
+  .editor-area{display:flex;flex-direction:column;overflow:hidden}
+  .editor-top{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .editor-top input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:'Inter',sans-serif;font-size:.9rem}
+  .editor-top input:focus{outline:none;border-color:var(--accent)}
+  .input-title{flex:1;min-width:160px;font-size:1rem;font-weight:600}
+  .input-artist{width:160px}
+  .editor-body{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden}
+  .pane{display:flex;flex-direction:column;overflow:hidden}
+  .pane-header{padding:10px 20px;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'Space Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .pane-header .hint{color:rgba(124,58,237,.8);font-size:.6rem}
+  textarea{flex:1;background:var(--bg);border:none;resize:none;color:var(--text);font-family:'Space Mono','Courier New',monospace;font-size:.82rem;line-height:1.6;padding:20px;outline:none;white-space:pre;tab-size:4}
+  textarea::placeholder{color:var(--muted)}
+  .preview-pane{border-left:1px solid var(--border);overflow-y:auto;padding:20px}
+  .preview-pane::-webkit-scrollbar{width:4px}
+  .preview-pane::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .verse-block{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:all .15s;position:relative}
+  .verse-block:hover{border-color:var(--accent2)}
+  .verse-block.live{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 24px rgba(255,60,90,.2)}
+  .verse-label{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);font-family:'Space Mono',monospace;margin-bottom:6px}
+  .verse-block.live .verse-label{color:var(--accent)}
+  .verse-text{font-size:.78rem;line-height:1.5;color:#c0c0d8;white-space:pre;font-family:'Space Mono','Courier New',monospace;overflow-x:auto}
+  .live-pill{position:absolute;right:12px;top:12px;background:var(--accent);color:#fff;font-size:.55rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+  .chord-line{color:var(--accent);font-family:'Space Mono',monospace;font-size:.75rem;opacity:.85}
+  .controls{padding:14px 24px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface);flex-wrap:wrap}
+  .ctrl-btn{padding:10px 20px;border-radius:8px;border:none;font-family:'Inter',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px}
+  .btn-go{background:var(--accent);color:#fff}
+  .btn-go:hover{background:#e02b4a;transform:translateY(-1px)}
+  .btn-nav{background:var(--border);color:var(--text);padding:10px 16px}
+  .btn-nav:hover{background:#3a3a55}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-save{background:rgba(124,58,237,.2);border:1px solid var(--accent2);color:#a78bfa}
+  .btn-save:hover{background:rgba(124,58,237,.35)}
+  .spacer{flex:1}
+  .current-info{font-size:.75rem;color:var(--muted);font-family:'Space Mono',monospace}
+  .current-info strong{color:var(--text)}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:500px;max-width:95vw}
+  .modal h2{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;margin-bottom:18px}
+  .modal input,.modal textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;margin-bottom:12px;font-family:'Inter',sans-serif;font-size:.9rem}
+  .modal textarea{min-height:200px;resize:vertical;font-family:'Space Mono',monospace;font-size:.8rem;line-height:1.6}
+  .modal input:focus,.modal textarea:focus{outline:none;border-color:var(--accent)}
+  .modal-hint{font-size:.75rem;color:var(--muted);margin-bottom:12px}
+  .modal-btns{display:flex;gap:10px;justify-content:flex-end}
+  .modal-btns button{padding:9px 22px;border-radius:8px;border:none;font-family:'Inter',sans-serif;font-weight:600;cursor:pointer;font-size:.85rem}
+  .btn-cancel{background:var(--border);color:var(--text)}
+  .btn-confirm{background:var(--accent);color:#fff}
+  .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);text-align:center;gap:12px}
+  .empty-icon{font-size:3rem;opacity:.3}
+  .empty-state p{font-size:.85rem;max-width:240px;line-height:1.6}
+  .img-upload-area{margin:0 20px 16px;border:1px dashed rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .15s;text-align:center}
+  .img-upload-area:hover{border-color:var(--accent2);background:rgba(124,58,237,.08)}
+  .img-preview{width:100%;height:80px;object-fit:cover;border-radius:6px;margin-bottom:8px;display:none}
+  .img-upload-label{font-size:.72rem;color:var(--muted);display:block}
+  .img-upload-label span{color:var(--accent2)}
+  .img-remove-btn{font-size:.68rem;color:var(--accent);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;margin-top:4px;display:none}
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen{
+    position:fixed;inset:0;z-index:999;
+    background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:0;
+  }
+  #login-screen.hidden{display:none}
+  .login-box{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:20px;padding:40px 36px;width:360px;max-width:92vw;
+    display:flex;flex-direction:column;align-items:center;gap:20px;
+  }
+  .login-logo-band{
+    font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:5px;
+    background:linear-gradient(90deg,#ff3c5a,#c850c0,#4158d0);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    text-align:center;line-height:1.1;
+  }
+  .login-logo-sub{
+    font-family:'Space Mono',monospace;font-size:.55rem;
+    letter-spacing:4px;color:var(--muted);text-align:center;margin-top:2px;
+  }
+  .login-icon{font-size:2.2rem;margin-top:4px}
+  .login-label{font-size:.75rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;align-self:flex-start}
+  .login-input{
+    width:100%;background:var(--bg);border:1px solid var(--border);
+    color:var(--text);padding:12px 16px;border-radius:10px;
+    font-family:'Space Mono',monospace;font-size:1rem;letter-spacing:4px;
+    text-align:center;outline:none;transition:border-color .2s;
+  }
+  .login-input:focus{border-color:var(--accent2)}
+  .login-btn{
+    width:100%;padding:13px;border-radius:10px;border:none;
+    background:linear-gradient(90deg,#ff3c5a,#c850c0);
+    color:#fff;font-family:'Inter',sans-serif;font-size:1rem;font-weight:700;
+    cursor:pointer;letter-spacing:1px;transition:opacity .15s;
+  }
+  .login-btn:hover{opacity:.85}
+  .login-error{
+    font-size:.8rem;color:var(--accent);text-align:center;
+    opacity:0;transition:opacity .2s;min-height:1.2em;
+  }
+  .login-error.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div>
+      <div class="login-logo-band">Equalizer Music Band</div>
+      <div class="login-logo-sub">lyrics runner</div>
+    </div>
+    <div class="login-icon">🔐</div>
+    <div style="width:100%">
+      <div class="login-label">Password</div>
+      <input class="login-input" id="login-input" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="login-btn">Enter</button>
+    <div class="login-error" id="login-error">Wrong password. Try again.</div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-band">Equalizer Music Band</div>
+    <div class="logo-sub">lyrics runner</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="conn-status">
+      <span class="dot" id="conn-dot"></span>
+      <span id="conn-text">Connecting…</span>
+    </div>
+    <div class="badge">HOST</div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="share-panel">
+      <img id="qr-img" src="" alt="QR">
+      <div class="share-info">
+        <div class="share-title">📱 Phone / Tablet View</div>
+        <a class="share-url" id="viewer-url" target="_blank">—</a>
+        <div class="share-hint">Scan QR or open URL on any device 🌐</div>
+      </div>
+    </div>
+    <!-- BG IMAGE UPLOAD -->
+    <div class="img-upload-area" id="img-upload-area">
+      <img id="img-preview" class="img-preview" alt="BG Preview">
+      <label class="img-upload-label">🖼 <span>Upload Band Image</span><br>Shows as viewer background</label>
+      <button class="img-remove-btn" id="img-remove-btn">✕ Remove image</button>
+      <input type="file" id="img-file-input" accept="image/*" style="display:none">
+    </div>
+    <!-- MP3 UPLOAD -->
+    <div class="img-upload-area" id="mp3-upload-area" style="margin-top:0">
+      <div id="mp3-info" style="display:none;width:100%">
+        <div style="font-size:.7rem;color:var(--accent2);margin-bottom:6px;font-family:'Space Mono',monospace" id="mp3-name">—</div>
+        <div style="display:flex;gap:6px;justify-content:center">
+          <button class="img-remove-btn" id="mp3-play-btn" style="display:block;color:var(--green)">▶ Play</button>
+          <button class="img-remove-btn" id="mp3-stop-btn" style="display:block">⏹ Stop</button>
+          <button class="img-remove-btn" id="mp3-remove-btn" style="display:block">✕ Remove</button>
+        </div>
+      </div>
+      <label class="img-upload-label" id="mp3-label">🎵 <span>Upload MP3</span><br>Background music for viewer</label>
+      <input type="file" id="mp3-file-input" accept="audio/mp3,audio/*" style="display:none">
+    </div>
+
+    <div class="sidebar-section" style="padding-bottom:10px">
+      <h3>Setlist</h3>
+      <button class="add-btn" id="add-btn">＋ Add Song</button>
+    </div>
+    <div class="song-list" id="song-list"></div>
+  </div>
+
+  <div class="editor-area">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🎸</div>
+      <p>Add a song to your setlist to start running lyrics</p>
+    </div>
+    <div id="song-editor" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div class="editor-top">
+        <input class="input-title" id="edit-title" type="text" placeholder="Song Title">
+        <input class="input-artist" id="edit-artist" type="text" placeholder="Artist / Band">
+        <button class="ctrl-btn btn-save" id="save-btn">💾 Save</button>
+        <button class="ctrl-btn btn-ghost" id="del-btn">🗑 Delete</button>
+      </div>
+      <div class="editor-body">
+        <div class="pane">
+          <div class="pane-header"><span>Lyrics Editor</span><span class="hint">Blank line = new verse</span></div>
+          <textarea id="lyrics-input" placeholder="Type lyrics here...&#10;&#10;Separate verses with blank lines.&#10;&#10;Verse 1&#10;Line one&#10;Line two&#10;&#10;Chorus&#10;La la la..."></textarea>
+        </div>
+        <div class="pane" style="overflow:hidden">
+          <div class="pane-header"><span>Verses — Click to Go Live</span><span class="hint" id="verse-count"></span></div>
+          <div class="preview-pane" id="verse-preview"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn btn-nav" id="prev-btn">◀ Prev</button>
+        <button class="ctrl-btn btn-nav" id="next-btn">Next ▶</button>
+        <button class="ctrl-btn btn-go" id="go-btn">🔴 GO LIVE</button>
+        <button class="ctrl-btn btn-ghost" id="clear-btn">⬛ Clear Screen</button>
+        <div class="spacer"></div>
+        <div class="current-info" id="current-info">No verse live</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h2>Add Song</h2>
+    <input type="text" id="modal-title" placeholder="Song Title *">
+    <input type="text" id="modal-artist" placeholder="Artist / Band">
+    <div class="modal-hint">Separate verses/chorus with a blank line.</div>
+    <textarea id="modal-lyrics" placeholder="Verse 1&#10;Mage hitha inna&#10;Oba sondura...&#10;&#10;Chorus&#10;La la la la..."></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-confirm" id="modal-confirm">Add Song</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyATlzx0mYrd61nTzfDMgLqaFoVgvwYlK-g",
+  authDomain: "band-lyrics.firebaseapp.com",
+  databaseURL: "https://band-lyrics-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "band-lyrics",
+  storageBucket: "band-lyrics.firebasestorage.app",
+  messagingSenderId: "999724754981",
+  appId: "1:999724754981:web:df22db8aaa1bb0c992b7cc"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const liveRef  = ref(db, 'live');
+const songsRef = ref(db, 'songs');
+const bgRef    = ref(db, 'bgImage');
+
+// Connection status
+onValue(ref(db, '.info/connected'), snap => {
+  const ok = snap.val();
+  document.getElementById('conn-dot').className = 'dot ' + (ok ? 'green' : 'red');
+  document.getElementById('conn-text').textContent = ok ? 'Firebase connected ✓' : 'Reconnecting…';
+});
+
+function pushLiveData(data) { set(liveRef, data); }
+
+// ── STATE ──────────────────────────────────────────────────
+let songs  = [];
+let curIdx = -1;
+let liveIdx = -1;
+let _songsLoaded = false;
+
+// Load songs from Firebase on startup
+onValue(songsRef, snap => {
+  const data = snap.val();
+  songs = data ? Object.values(data) : [];
+  // Migrate from localStorage if Firebase empty & localStorage has data
+  if (!_songsLoaded && songs.length === 0) {
+    const local = JSON.parse(localStorage.getItem('lr_songs') || '[]');
+    if (local.length > 0) {
+      songs = local;
+      persist(); // push to Firebase
+    }
+  }
+  _songsLoaded = true;
+  renderList();
+  if (curIdx >= songs.length) curIdx = -1;
+  renderEditor();
+});
+
+// ── VIEWER URL ─────────────────────────────────────────────
+const viewerUrl = location.href.replace('lyrics-host.html', 'lyrics-viewer.html');
+document.getElementById('viewer-url').textContent = viewerUrl;
+document.getElementById('viewer-url').href = viewerUrl;
+document.getElementById('qr-img').src =
+  `https://api.qrserver.com/v1/create-qr-code/?size=144x144&color=ff3c5a&bgcolor=13131c&data=${encodeURIComponent(viewerUrl)}`;
+
+// ── HELPERS ────────────────────────────────────────────────
+const parseVerses = txt => txt.split(/\n\s*\n/).map(v => v.trim()).filter(Boolean);
+const $ = id => document.getElementById(id);
+
+// ── RENDER SONG LIST ───────────────────────────────────────
+function renderList() {
+  const el = $('song-list');
+  el.innerHTML = songs.length
+    ? songs.map((s,i) => `<div class="song-item ${i===curIdx?'active':''}" data-i="${i}">
+        <span class="num">${String(i+1).padStart(2,'0')}</span>
+        <div><div class="stitle">${s.title}</div><div class="artist">${s.artist||'—'}</div></div>
+      </div>`).join('')
+    : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">No songs yet</div>';
+  el.querySelectorAll('.song-item').forEach(el => el.addEventListener('click', () => selectSong(+el.dataset.i)));
+}
+
+// ── SELECT SONG ────────────────────────────────────────────
+function selectSong(i) {
+  curIdx = i; liveIdx = -1;
+  renderList(); renderEditor();
+}
+
+function renderEditor() {
+  if (curIdx < 0) { $('empty-state').style.display='flex'; $('song-editor').style.display='none'; return; }
+  $('empty-state').style.display='none'; $('song-editor').style.display='flex';
+  const s = songs[curIdx];
+  $('edit-title').value = s.title;
+  $('edit-artist').value = s.artist||'';
+  $('lyrics-input').value = s.lyrics||'';
+  renderVerses();
+}
+
+// ── RENDER VERSES ──────────────────────────────────────────
+function renderVerses() {
+  const verses = parseVerses($('lyrics-input').value);
+  $('verse-count').textContent = `${verses.length} verse${verses.length!==1?'s':''}`;
+  $('verse-preview').innerHTML = verses.length
+    ? verses.map((v,i) => {
+        const lines = v.split('\n');
+        const first = lines[0].trim();
+        const isLbl = /^(verse|chorus|bridge|outro|intro|pre|hook)/i.test(first) && first.length < 30;
+        const label = isLbl ? first.toUpperCase() : `VERSE ${i+1}`;
+        const body  = isLbl ? lines.slice(1) : lines;
+        const live  = i === liveIdx;
+        return `<div class="verse-block ${live?'live':''}" data-i="${i}">
+          ${live?'<div class="live-pill">LIVE</div>':''}
+          <div class="verse-label">${label}</div>
+          <div class="verse-text">${body.join('\n')}</div>
+        </div>`;
+      }).join('')
+    : '<div style="padding:20px;color:var(--muted);font-size:.8rem">Type lyrics in the editor…</div>';
+  $('verse-preview').querySelectorAll('.verse-block').forEach(el =>
+    el.addEventListener('click', () => goVerseIdx(+el.dataset.i)));
+}
+
+function goVerseIdx(i) {
+  liveIdx = i; renderVerses(); updateInfo(); pushVerse();
+  setTimeout(() => scrollToLive(), 50);
+}
+
+function pushVerse() {
+  if (curIdx < 0 || liveIdx < 0) return;
+  const verses = parseVerses($('lyrics-input').value);
+  if (!verses[liveIdx]) return;
+  const s = songs[curIdx];
+  pushLiveData({ type:'verse', title:s.title, artist:s.artist||'', text:verses[liveIdx], verseIdx:liveIdx, total:verses.length, ts:Date.now() });
+}
+
+function updateInfo() {
+  const verses = parseVerses($('lyrics-input').value);
+  $('current-info').innerHTML = (liveIdx<0||!verses.length)
+    ? 'No verse live'
+    : `<strong>${songs[curIdx].title}</strong> — Verse ${liveIdx+1} / ${verses.length}`;
+}
+
+function scrollToLive() {
+  document.querySelector(`.verse-block[data-i="${liveIdx}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+// ── CONTROLS ───────────────────────────────────────────────
+$('go-btn').onclick = () => {
+  if (curIdx < 0) return;
+  if (liveIdx < 0) liveIdx = 0;
+  renderVerses(); updateInfo(); pushVerse();
+};
+$('prev-btn').onclick = () => {
+  const n = parseVerses($('lyrics-input').value).length; if (!n) return;
+  liveIdx = Math.max(0, liveIdx <= 0 ? 0 : liveIdx-1);
+  renderVerses(); updateInfo(); pushVerse(); setTimeout(() => scrollToLive(), 50);
+};
+$('next-btn').onclick = () => {
+  const v = parseVerses($('lyrics-input').value); if (!v.length) return;
+  liveIdx = Math.min(v.length-1, liveIdx+1);
+  renderVerses(); updateInfo(); pushVerse(); setTimeout(() => scrollToLive(), 50);
+};
+$('clear-btn').onclick = () => {
+  liveIdx = -1; renderVerses(); updateInfo();
+  pushLiveData({ type:'clear', ts:Date.now() });
+};
+$('save-btn').onclick = () => {
+  if (curIdx < 0) return;
+  songs[curIdx] = { ...songs[curIdx], title:$('edit-title').value||'Untitled', artist:$('edit-artist').value, lyrics:$('lyrics-input').value };
+  persist(); renderList(); renderVerses();
+  const b=$('save-btn'), o=b.innerHTML; b.innerHTML='✅ Saved!'; setTimeout(()=>b.innerHTML=o,1200);
+};
+$('del-btn').onclick = () => {
+  if (curIdx < 0 || !confirm('Delete this song?')) return;
+  songs.splice(curIdx,1); curIdx=-1; persist(); renderList(); renderEditor();
+};
+
+$('lyrics-input').addEventListener('input', renderVerses);
+
+function persist() {
+  // Save to Firebase as object map
+  const data = {};
+  songs.forEach((s, i) => data[i] = s);
+  set(songsRef, songs.length > 0 ? data : null);
+}
+
+// ── MODAL ──────────────────────────────────────────────────
+$('add-btn').onclick = () => {
+  ['modal-title','modal-artist','modal-lyrics'].forEach(id => $(id).value='');
+  $('add-modal').classList.add('open');
+  setTimeout(()=>$('modal-title').focus(),100);
+};
+$('modal-cancel').onclick = () => $('add-modal').classList.remove('open');
+$('modal-confirm').onclick = () => {
+  const t = $('modal-title').value.trim(); if (!t) { $('modal-title').focus(); return; }
+  songs.push({title:t, artist:$('modal-artist').value.trim(), lyrics:$('modal-lyrics').value});
+  persist(); $('add-modal').classList.remove('open'); renderList(); selectSong(songs.length-1);
+};
+
+// ── KEYBOARD ───────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if (e.key==='ArrowRight'||e.key==='ArrowDown') $('next-btn').click();
+  if (e.key==='ArrowLeft'||e.key==='ArrowUp') $('prev-btn').click();
+  if (e.key===' ') { e.preventDefault(); $('go-btn').click(); }
+});
+
+renderList(); renderEditor();
+
+// ── BG IMAGE ───────────────────────────────────────────────
+const imgArea    = document.getElementById('img-upload-area');
+const imgInput   = document.getElementById('img-file-input');
+const imgPreview = document.getElementById('img-preview');
+const imgRemove  = document.getElementById('img-remove-btn');
+const imgLabel   = document.querySelector('.img-upload-label');
+
+imgArea.addEventListener('click', e => {
+  if (e.target === imgRemove) return;
+  imgInput.click();
+});
+
+onValue(bgRef, snap => {
+  const url = snap.val();
+  if (url) {
+    imgPreview.src = url;
+    imgPreview.style.display = 'block';
+    imgRemove.style.display  = 'block';
+    imgLabel.style.display   = 'none';
+  } else {
+    imgPreview.src = '';
+    imgPreview.style.display = 'none';
+    imgRemove.style.display  = 'none';
+    imgLabel.style.display   = 'block';
+  }
+});
+
+imgInput.addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 900000) {
+    alert('Image too large! Please use under 900KB — compress at tinypng.com');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ev => set(bgRef, ev.target.result);
+  reader.readAsDataURL(file);
+});
+
+imgRemove.addEventListener('click', e => {
+  e.stopPropagation();
+  if (!confirm('Remove background image?')) return;
+  set(bgRef, null);
+  imgInput.value = '';
+});
+
+// ── MP3 AUDIO ──────────────────────────────────────────────
+const mp3Ref     = ref(db, 'mp3Name');
+const mp3Area    = document.getElementById('mp3-upload-area');
+const mp3Input   = document.getElementById('mp3-file-input');
+const mp3Info    = document.getElementById('mp3-info');
+const mp3Label   = document.getElementById('mp3-label');
+const mp3Name    = document.getElementById('mp3-name');
+const mp3PlayBtn = document.getElementById('mp3-play-btn');
+const mp3StopBtn = document.getElementById('mp3-stop-btn');
+const mp3RemBtn  = document.getElementById('mp3-remove-btn');
+let hostAudio    = null;
+
+mp3Area.addEventListener('click', e => {
+  if ([mp3PlayBtn,mp3StopBtn,mp3RemBtn].includes(e.target)) return;
+  mp3Input.click();
+});
+
+// Store mp3 as base64 in Firebase (max ~3MB mp3)
+const mp3DataRef = ref(db, 'mp3Data');
+
+onValue(mp3DataRef, snap => {
+  const data = snap.val();
+  if (data) {
+    mp3Info.style.display  = 'block';
+    mp3Label.style.display = 'none';
+  } else {
+    mp3Info.style.display  = 'none';
+    mp3Label.style.display = 'block';
+    if (hostAudio) { hostAudio.pause(); hostAudio = null; }
+  }
+});
+
+onValue(mp3Ref, snap => {
+  const name = snap.val();
+  if (name) mp3Name.textContent = '🎵 ' + name;
+});
+
+mp3Input.addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 4000000) {
+    alert('MP3 too large! Please use under 4MB.');
+    return;
+  }
+  const btn = mp3PlayBtn;
+  btn.textContent = '⏳ Uploading…';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    set(mp3DataRef, ev.target.result);
+    set(mp3Ref, file.name);
+    btn.textContent = '▶ Play';
+  };
+  reader.readAsDataURL(file);
+});
+
+mp3PlayBtn.addEventListener('click', async () => {
+  const snap = await new Promise(r => onValue(mp3DataRef, r, {onlyOnce:true}));
+  const data = snap.val();
+  if (!data) return;
+  if (hostAudio) hostAudio.pause();
+  hostAudio = new Audio(data);
+  hostAudio.play();
+  mp3PlayBtn.textContent = '⏸ Playing';
+  hostAudio.onended = () => { mp3PlayBtn.textContent = '▶ Play'; };
+});
+
+mp3StopBtn.addEventListener('click', () => {
+  if (hostAudio) { hostAudio.pause(); hostAudio.currentTime = 0; }
+  mp3PlayBtn.textContent = '▶ Play';
+});
+
+mp3RemBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (!confirm('Remove MP3?')) return;
+  set(mp3DataRef, null);
+  set(mp3Ref, null);
+  mp3Input.value = '';
+  if (hostAudio) { hostAudio.pause(); hostAudio = null; }
+});
+
+// ── PASSWORD LOGIN ────────────────────────────────────────
+const PASS_KEY = 'lr_auth';
+const CORRECT  = 'equalizer2025'; // 🔑 Password eka meka
+
+function checkAuth() {
+  if (sessionStorage.getItem(PASS_KEY) === 'ok') {
+    document.getElementById('login-screen').classList.add('hidden');
+  }
+}
+
+document.getElementById('login-btn').onclick = doLogin;
+document.getElementById('login-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogin() {
+  const val = document.getElementById('login-input').value.trim();
+  if (val === CORRECT) {
+    sessionStorage.setItem(PASS_KEY, 'ok');
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('login-error').classList.remove('show');
+  } else {
+    document.getElementById('login-error').classList.add('show');
+    document.getElementById('login-input').value = '';
+    document.getElementById('login-input').focus();
+    document.getElementById('login-input').style.borderColor = 'var(--accent)';
+    setTimeout(() => {
+      document.getElementById('login-input').style.borderColor = '';
+    }, 800);
+  }
+}
+
+checkAuth();
+</script>
+</body>
+</html>
